@@ -15,7 +15,7 @@ pars="[0.05]"
 ntest=1
 lmax=11
 
-exe="import test_ensemble; test_ensemble.ens_tau(pars=$pars, ntest=$ntest, lmax_in=$lmax)"
+exe="import src.test_ensemble as te; te.ens_tau(pars=$pars, ntest=$ntest, lmax_in=$lmax)"
 echo $exe
 
 $PYTHON3 -c "$exe"
