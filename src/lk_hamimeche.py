@@ -219,7 +219,7 @@ def n2logL_new_single(cl_ana, cl_est, cl_fid):
       
     ## 1. vectors and summation
     #st = time.time()
-    Mv = 2/(2*l - 1) * cl_fid
+    Mv = 2./(2.*l - 1.) * cl_fid #* cl_fid
     Mvi = 1/Mv
     n2lnL1 = np.sum(v * Mvi * v)
     #print ('elapsed time for method 1 (summation):', time.time()-st, 's')
@@ -237,6 +237,7 @@ def n2logL_new_single(cl_ana, cl_est, cl_fid):
     #plt.loglog(l, cl_fid)
     #plt.loglog(l, cl_est)
     #plt.savefig('cls.png')
+    print ('-2 log likelihood=', n2lnL1) 
 
     return n2lnL1
      
