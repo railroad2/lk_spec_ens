@@ -205,6 +205,42 @@ def n2logL_approx_TEB(Cls_ana, Cls_est, inv_Cls_fid, det_Cls_fid, n_field=3):
 
     return n2logLf
 
+
+def g(x):
+    return np.sign(x-1)*np.sqrt(2*(x-np.log(x)-1))
+
+def n2logL_new_single(cl_ana, cl_est, cl_fid):
+    cl_ana = np.array(cl_ana)[2:]
+    cl_est = np.array(cl_est)[2:]
+    cl_fid = np.array(cl_fid)[2:]
+
+    l = np.arange(len(cl_ana))+2
+    v = (g(cl_est/cl_ana)*cl_fid)
+      
+    ## 1. vectors and summation
+    #st = time.time()
+    Mv = 2/(2*l - 1) * cl_fid
+    Mvi = 1/Mv
+    n2lnL1 = np.sum(v * Mvi * v)
+    #print ('elapsed time for method 1 (summation):', time.time()-st, 's')
+    
+    ## 2. Matrix operation
+    #st = time.time()
+    #M = np.diag(2/(2*l - 1) * cl_fid)
+    #Mi = np.linalg.inv(M) 
+    #M = 2/(2*l - 1) * cl_fid
+    #Mi = np.diag(1/M) 
+    #n2lnL2 = np.dot(v, np.dot(Mi, v))
+    #print ('elapsed time for method 2 (matrix):', time.time()-st, 's')
+
+    #plt.loglog(l, cl_ana)
+    #plt.loglog(l, cl_fid)
+    #plt.loglog(l, cl_est)
+    #plt.savefig('cls.png')
+
+    return n2lnL1
+     
+
 ## convert cls to Cls
 
 def cls2Cls(cls, T=True):
@@ -309,6 +345,7 @@ def fit_minuit_AsTau(As0, tau0, cls_est, fnc_type):
     #m.draw_mncontour('ns', 'ombh2', nsigma=4)
 
     return res
+
 
 def fit_minuit_TEB(r, cls_est, fnc_type):
     def fit_minuit_1(ns):

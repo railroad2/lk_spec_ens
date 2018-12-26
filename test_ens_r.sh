@@ -11,12 +11,15 @@ echo $PBS_O_WORKDIR
 
 export PYTHON3=/home/kmlee/git-inst/bin/python3
 
-pars="[0.025, 0.03, 0.050]"
+#pars="[0.025, 0.03, 0.050]"
+vals=`seq -s ', ' 0.01 0.01 0.07`
+pars="[$vals]"
 ntest=1000
 lmax=100
 specplt="True"
+nonfid="True"
 
-exe="import src.test_ensemble as te; te.ens_r(pars=$pars, ntest=$ntest, lmax_in=$lmax, specplt=$specplt)"
+exe="import src.test_ensemble as te; te.ens_r(pars=$pars, ntest=$ntest, lmax_in=$lmax, specplt=$specplt, nonfid=$nonfid)"
 echo $exe
 
 $PYTHON3 -c "$exe"

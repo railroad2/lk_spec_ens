@@ -140,16 +140,22 @@ def test_n2logLf_EB(As_in=2.092e-9, tau_in=0.0522, r_in=0.01,
         return lk
 
     tau0 = tau_in * 0.99 
-    tau_sig = 2e-3
+    tau_sig = 2e-2
     tau_limit = tau0 + 5*np.array((-tau_sig, tau_sig))
+    if tau_limit[0] < 0:
+        tau_limit[0] = 0
 
     As0 = As_in * 0.99
-    As_sig = 1e-10
+    As_sig = 1e-2
     As_limit = As0 + 5*np.array((-As_sig, As_sig))
+    if As_limit[0] < 0:
+        As_limit[0] = 0
 
     r0 = r_in * 0.99
-    r_sig = 1.5e-3
+    r_sig = 2e-2
     r_limit = r0 + 5*np.array((-r_sig, r_sig))
+    if r_limit[0] < 0:
+        r_limit[0] = 0
 
     if fix_tau:
         tau0 = tau_in
@@ -427,7 +433,7 @@ def ens_As(pars=None, lmax_in=1535, ntest=10, specplt=False, nonfid=False, dir=N
     if dir is None:
         dir = ('./ensemble_lmax%d_As_' % lmax) + time.strftime('%Y-%m-%d_%X')
     else:
-        dir = dir + time.strftime('%Y-%m-%d_%X')
+        dir = dir + ('/ensemble_lmax%d_As_' % lmax) + time.strftime('%Y-%m-%d_%X')
 
     if not os.path.isdir(dir):
         os.mkdir(dir)
@@ -437,7 +443,7 @@ def ens_As(pars=None, lmax_in=1535, ntest=10, specplt=False, nonfid=False, dir=N
         test_ensemble(pname='As', par_in=par_in, ntest=ntest, dir=dir, specplt=specplt, nonfid=nonfid)
 
 
-def ens_tau(pars=None, lmax_in=1535, ntest=10, specplt=False, nonfid=False):
+def ens_tau(pars=None, lmax_in=1535, ntest=10, specplt=False, nonfid=False, dir=None):
     global lmax 
     lmax = lmax_in
 
@@ -448,7 +454,12 @@ def ens_tau(pars=None, lmax_in=1535, ntest=10, specplt=False, nonfid=False):
 
     print ('tau=', parr)
 
-    dir = ('./ensemble_lmax%d_tau_' % lmax) + time.strftime('%Y-%m-%d_%X')
+    if dir is None:
+        dir = ('./ensemble_lmax%d_tau_' % lmax) + time.strftime('%Y-%m-%d_%X')
+    else:
+        dir = dir + ('/ensemble_lmax%d_tau_' % lmax) + time.strftime('%Y-%m-%d_%X')
+
+
     if not os.path.isdir(dir):
         os.mkdir(dir)
         print (dir, 'has been created.')
@@ -457,7 +468,7 @@ def ens_tau(pars=None, lmax_in=1535, ntest=10, specplt=False, nonfid=False):
         test_ensemble(pname='tau', par_in=par_in, ntest=ntest, dir=dir, specplt=specplt, nonfid=nonfid)
 
 
-def ens_r(pars=None, lmax_in=1535, ntest=10, specplt=False, nonfid=False):
+def ens_r(pars=None, lmax_in=1535, ntest=10, specplt=False, nonfid=False, dir=None):
     global lmax 
     lmax = lmax_in
 
@@ -468,7 +479,10 @@ def ens_r(pars=None, lmax_in=1535, ntest=10, specplt=False, nonfid=False):
 
     print ('r=', parr)
 
-    dir = ('./ensemble_lmax%d_r_' % lmax) + time.strftime('%Y-%m-%d_%X')
+    if dir is None:
+        dir = ('./ensemble_lmax%d_r_' % lmax) + time.strftime('%Y-%m-%d_%X')
+    else:
+        dir = dir + ('/ensemble_lmax%d_r_' % lmax) + time.strftime('%Y-%m-%d_%X')
     if not os.path.isdir(dir):
         os.mkdir(dir)
         print (dir, 'has been created.')
