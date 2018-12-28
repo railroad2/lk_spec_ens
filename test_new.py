@@ -43,15 +43,16 @@ def test_new_single_logAs():
     print ('L1=', L1)
 
     def fnc(logAs):
+        print ('logAs=', logAs, )
         As = np.exp(logAs)/1e10
         cl_ana = get_spectrum_camb(lmax, isDl=False, TTonly=True, As=As) * scale
         return lh.n2logL_new_single(cl_ana, cl_est, cl_fid)
          
-    m = Minuit(fnc, logAs=3.0, errordef=1, limit_logAs=(1.0, 6.0), error_logAs=1)
+    limit = (2.9, 3.1)
+    m = Minuit(fnc, logAs=3.0, errordef=1, limit_logAs=limit, error_logAs=1)
     #m.migrad()
-    m.draw_profile('As', bins=100)
+    m.draw_profile('logAs', bins=100, bound=limit)
     plt.savefig('profile.png')
-
 
 if __name__=='__main__':
     test_new_single_logAs()

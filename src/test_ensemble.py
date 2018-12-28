@@ -107,12 +107,16 @@ def test_n2logLf_TEB():
 
 
 ## Test of 2 correlated fields fit (polarizations)
-def test_n2logLf_EB(As_in=2.092e-9, tau_in=0.0522, r_in=0.01,
-                    fix_As=False, fix_tau=False, fix_r=False, spec=False):
+def test_n2logLf_EB(As_in=2.092e-9, tau_in=0.0522, r_in=0.01, lmax=11,
+                    fix_As=False, fix_tau=False, fix_r=False, spec=False, 
+                    migradonly=False):
     K2uK = 1e12
     clscale = K2uK * 1.0
     # fiducial model
-    cls_fid = get_spectrum_camb(lmax, tau=0.05, As=2e-9, r=0.05, isDl=False) * clscale
+    tau_fid = 0.05
+    As_fid = 2e-9
+    r_fid = 0.1
+    cls_fid = get_spectrum_camb(lmax, tau=tau_fid, As=As_fid, r=r_fid, isDl=False) * clscale
 
     # synthesize a random map
     print_debug(As_in, tau_in, r_in)
@@ -174,18 +178,27 @@ def test_n2logLf_EB(As_in=2.092e-9, tau_in=0.0522, r_in=0.01,
                limit_tau=tau_limit, limit_As=As_limit, limit_r=r_limit,
                fix_tau=fix_tau, fix_As=fix_As, fix_r=fix_r)
 
-    st = time.time()
-    res = m.migrad()
-    print ('Elapsed time for migrad: %fs' % (time.time()-st))
+    if migradonly:
+        st = time.time()
+        res = m.migrad()
+        print ('Elapsed time for migrad: %fs' % (time.time()-st))
+        if (spec == True):
+            return res, cls_est/clscale
+        else:
+            return res
+    else:
+        st = time.time()
+        res_h = m.hesse()
+        print ('Elapsed time for hesse: %fs' % (time.time()-st))
 
-    st = time.time()
-    res_h = m.hesse()
-    print ('Elapsed time for hesse: %fs' % (time.time()-st))
+        st = time.time()
+        res_m = m.minos()
+        print ('Elapsed time for minos: %fs' % (time.time()-st))
 
-    st = time.time()
-    res_m = m.minos()
-    print ('Elapsed time for minos: %fs' % (time.time()-st))
-
+        if (spec == True):
+            return res, res_h, res_m, cls_est/clscale
+        else:
+            return res, res_h, res_m
 
     ''' 
     plt.figure()
@@ -212,14 +225,10 @@ def test_n2logLf_EB(As_in=2.092e-9, tau_in=0.0522, r_in=0.01,
     
     #pprint(res)
     #plt.show()
-    if (spec == True):
-        return res, res_h, res_m, cls_est/clscale
-    else:
-        return res, res_h, res_m
 
-
-def test_n2logLf_EB_nonfid(As_in=2.092e-9, tau_in=0.0522, r_in=0.01,
-                    fix_As=False, fix_tau=False, fix_r=False, spec=False):
+def test_n2logLf_EB_nonfid(As_in=2.092e-9, tau_in=0.0522, r_in=0.01, lmax=11,
+                    fix_As=False, fix_tau=False, fix_r=False, spec=False,
+                    migradonly=False):
     K2uK = 1e12
     clscale = K2uK * 1.0
     # fiducial model
@@ -280,17 +289,27 @@ def test_n2logLf_EB_nonfid(As_in=2.092e-9, tau_in=0.0522, r_in=0.01,
                limit_tau=tau_limit, limit_As=As_limit, limit_r=r_limit,
                fix_tau=fix_tau, fix_As=fix_As, fix_r=fix_r)
 
-    st = time.time()
-    res = m.migrad()
-    print ('Elapsed time for migrad: %fs' % (time.time()-st))
+    if migradonly:
+        st = time.time()
+        res = m.migrad()
+        print ('Elapsed time for migrad: %fs' % (time.time()-st))
+        if (spec == True):
+            return res, cls_est/clscale
+        else:
+            return res
+    else:
+        st = time.time()
+        res_h = m.hesse()
+        print ('Elapsed time for hesse: %fs' % (time.time()-st))
 
-    st = time.time()
-    res_h = m.hesse()
-    print ('Elapsed time for hesse: %fs' % (time.time()-st))
+        st = time.time()
+        res_m = m.minos()
+        print ('Elapsed time for minos: %fs' % (time.time()-st))
 
-    st = time.time()
-    res_m = m.minos()
-    print ('Elapsed time for minos: %fs' % (time.time()-st))
+        if (spec == True):
+            return res, res_h, res_m, cls_est/clscale
+        else:
+            return res, res_h, res_m
 
 
     ''' 
@@ -315,13 +334,6 @@ def test_n2logLf_EB_nonfid(As_in=2.092e-9, tau_in=0.0522, r_in=0.01,
     plt.loglog(ell, cl2dl(cls_upp[:3].T), '--', linewidth=0.5)
     plt.loglog(ell, cl2dl(cls_low[:3].T), '--', linewidth=0.5)
     '''
-    
-    #pprint(res)
-    #plt.show()
-    if (spec == True):
-        return res, res_h, res_m, cls_est/clscale
-    else:
-        return res, res_h, res_m
 
 
 ## Ensemble test
