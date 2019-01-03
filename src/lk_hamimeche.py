@@ -4,8 +4,11 @@ import healpy as hp
 import camb
 import pylab as plt
 import time
+import os
+from multiprocessing import Pool
 
 from pprint import pprint
+from scipy.linalg import sqrtm, eigvals
 from scipy.optimize import minimize
 from iminuit import Minuit
 
@@ -209,6 +212,7 @@ def n2logL_approx_TEB(Cls_ana, Cls_est, inv_Cls_fid, det_Cls_fid, n_field=3):
 def g(x):
     return np.sign(x-1)*np.sqrt(2*(x-np.log(x)-1))
 
+
 def n2logL_new_single(cl_ana, cl_est, cl_fid):
     cl_ana = np.array(cl_ana)[2:]
     cl_est = np.array(cl_est)[2:]
@@ -237,10 +241,125 @@ def n2logL_new_single(cl_ana, cl_est, cl_fid):
     #plt.loglog(l, cl_fid)
     #plt.loglog(l, cl_est)
     #plt.savefig('cls.png')
-    print ('-2 log likelihood=', n2lnL1) 
+    #print ('-2 log likelihood=', n2lnL1) 
 
     return n2lnL1
      
+
+def covMat_full(cl_fid, diagonal=True, simple=True):
+    if len(cl_fid) == 4 or len(cl_fid) == 6:
+        cl = cl_fid.T 
+    else:
+        cl = cl_fid
+
+    if len(cl[0]) == 4:
+        Ncl = 4
+    elif len(cl[0]) == 6:
+        Ncl = 6
+    else:
+        Ncl = 1
+
+    ndim = (len(cl)-2)
+    ell = np.arange(ndim) + 2
+    M_l = np.full((ndim, ndim, Ncl, Ncl), 0.)
+
+    for l in ell:
+        M_l[l-2,l-2] = 2./(2.*l-1.) * np.outer(cl[l], cl[l])
+
+    if (diagonal):
+        res = np.array([M_l[i,i] for i in range(ndim)])
+    else:
+        if (simple):
+            res = np.concatenate(np.concatenate(M_l, axis=1), axis=1)
+        else:
+            res = M_l
+
+    return res
+
+
+def g_(X):
+    V, U = np.linalg.eig(X)
+    gV = np.sign(V-1) * np.sqrt(2*(V-np.log(V)-1))
+    return np.array([np.diag(gl) for gl in gV])
+
+
+def vecp(Cls):
+    return np.array([[Cl[0][0], Cl[1][1], Cl[2][2], Cl[0][1]] for Cl in Cls])
+
+"""
+def getVector_Xg(cl_ana, cl_est, cl_fid):
+    Cl_ana = cls2Cls(cl_ana)[2:]
+    Cl_est = cls2Cls(cl_est)[2:]
+    Cl_fid = cls2Cls(cl_fid)[2:]
+
+    Cl_ana_inv = np.linalg.inv(Cl_ana)
+    Cl_ana_nsqrt = [sqrtm(ml) for ml in Cl_ana_inv]
+    Cl_fid_sqrt = [sqrtm(ml) for ml in Cl_fid]
+
+    CCC = np.matmul(Cl_ana_nsqrt, np.matmul(Cl_est, Cl_ana_nsqrt))
+
+    gCCC = g_(CCC)
+    
+    CgCCCC = np.matmul(Cl_fid_sqrt, np.matmul(gCCC, Cl_fid_sqrt))
+
+    Xg = vecp(CgCCCC)
+
+    return Xg
+      
+"""
+
+# for speed test and improvement
+def getVector_Xg(cl_ana, cl_est, cl_fid):
+    st = time.time()
+    Cl_ana = cls2Cls(cl_ana)[2:]
+    Cl_est = cls2Cls(cl_est)[2:]
+    Cl_fid = cls2Cls(cl_fid)[2:]
+    print_debug ('---- Elapsed time for cls2Cls: ', time.time() - st)
+
+    st = time.time()
+    Cl_ana_inv = np.linalg.inv(Cl_ana)
+    print_debug ('---- Elapsed time for Cl_ana inversion: ', time.time() - st)
+
+    st = time.time()
+    Cl_ana_nsqrt = [sqrtm(ml) for ml in Cl_ana_inv]
+    Cl_fid_sqrt = [sqrtm(ml) for ml in Cl_fid]
+    print_debug ('---- Elapsed time for sqrt of matrices: ', time.time() - st)
+
+    st = time.time()
+    CCC = np.matmul(Cl_ana_nsqrt, np.matmul(Cl_est, Cl_ana_nsqrt))
+    print_debug ('---- Elapsed time for CCC: ', time.time() - st)
+
+    st = time.time()
+    gCCC = g_(CCC)
+    print_debug ('---- Elapsed time for gCCC: ', time.time() - st)
+
+    st = time.time()
+    CgCCCC = np.matmul(Cl_fid_sqrt, np.matmul(gCCC, Cl_fid_sqrt))
+    print_debug ('---- Elapsed time for CgCCCC: ', time.time() - st)
+
+    st = time.time()
+    Xg = vecp(CgCCCC)
+    print_debug ('---- Elapsed time for Xg: ', time.time() - st)
+
+    return Xg
+
+def n2logL_new_multi(cl_ana, cl_est, cl_fid):
+    st = time.time()
+    M = covMat_full(cl_fid, diagonal=True)
+    print_debug ('elapsed time for covariance matrix calculation: ', time.time()-st)
+    st = time.time()
+    Mi = np.linalg.pinv(M)
+    print_debug ('elapsed time for covariance matrix inversion: ', time.time()-st)
+    st = time.time()
+    Xg = getVector_Xg(cl_ana, cl_est, cl_fid)
+    print_debug ('elapsed time for Xg vector calculation: ', time.time()-st)
+
+    st = time.time()
+    L = sum(np.einsum('ij,ij->i', Xg, np.einsum('ijk,ij->ik', Mi, Xg)))
+    print_debug ('elapsed time for Likelihood calculation: ', time.time()-st)
+
+    return L
+
 
 ## convert cls to Cls
 
@@ -248,6 +367,7 @@ def cls2Cls(cls, T=True):
     cls = np.array(cls)
     if len(cls.shape) != 2:
         print_error ('The input should be 2-D array')
+        return
     else:
         if (len(cls) == 4 or len(cls) == 6):
             cls_tmp = cls.T[:,:4]
@@ -263,6 +383,7 @@ def cls2Cls(cls, T=True):
     Cls = np.array(Cls)
 
     return Cls
+
 
 def invdet_fid(cls_fid, T=True):
     Cls_fid = cls2Cls(cls_fid, T) 
