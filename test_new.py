@@ -138,10 +138,10 @@ def test_new_multi_fit_logAs(mapTQU=None, lmax=100, scale=1e12):
     #m.migrad()
     plt.figure()
     m.draw_profile('logAs', bins=100, bound=limit)
-    #plt.savefig('profile_multi_logAs_lmax{}.png'.format(lmax))
+    plt.savefig('profile_multi_logAs_lmax{}_faster.png'.format(lmax))
 
 if __name__=='__main__':
-    lmax = 1000
+    lmax = 2000
     As_in = 2e-9
     logAs_in = np.log(As_in * 1e10)
     

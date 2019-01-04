@@ -5,7 +5,6 @@ import camb
 import pylab as plt
 import time
 import os
-from multiprocessing import Pool
 
 from pprint import pprint
 from scipy.linalg import sqrtm, eigvals
@@ -183,6 +182,8 @@ def n2logL_approx_eq27(cls_ana, cls_est):
 ## Gaussian approximation for correlated fields
 
 def n2logL_approx_TEB(Cls_ana, Cls_est, inv_Cls_fid, det_Cls_fid, n_field=3):
+    print ('test approximation TEB')
+
     ## input Cls's are array of matrices 
     ## [[TT, TE,  0], 
     ##  [TE, EE,  0], 
@@ -305,10 +306,28 @@ def getVector_Xg(cl_ana, cl_est, cl_fid):
     Xg = vecp(CgCCCC)
 
     return Xg
-      
 """
 
+def sqrtm_km(X):
+    D, V = np.linalg.eig(X)
+    D_sqrt_arr = np.sqrt(D)
+    if (len(X.shape) == 3):
+        D_sqrt = np.array([np.diag(mi) for mi in D_sqrt_arr])
+    elif (len(X.shape) == 2):
+        D_sqrt = np.diag(np.sqrt(D))
+    else:
+        print_error('Matrix with invaild dimension.')
+        
+    Vi = np.linalg.inv(V)
+
+    res = np.matmul(V, np.matmul(D_sqrt, Vi))
+    return res
+     
+
 # for speed test and improvement
+def sqrtm_(x):
+    return sqrtm(x)
+
 def getVector_Xg(cl_ana, cl_est, cl_fid):
     st = time.time()
     Cl_ana = cls2Cls(cl_ana)[2:]
@@ -320,10 +339,44 @@ def getVector_Xg(cl_ana, cl_est, cl_fid):
     Cl_ana_inv = np.linalg.inv(Cl_ana)
     print_debug ('---- Elapsed time for Cl_ana inversion: ', time.time() - st)
 
+    ## default (0.4 s)
+    #st = time.time()
+    #Cl_ana_nsqrt = [sqrtm(ml) for ml in Cl_ana_inv]
+    #Cl_fid_sqrt = [sqrtm(ml) for ml in Cl_fid] 
+    #print_debug ('---- Elapsed time for sqrt of matrices: ', time.time() - st)
+
+    ## using sqrtm_km() (0.04 s : 10x faster than default)
     st = time.time()
-    Cl_ana_nsqrt = [sqrtm(ml) for ml in Cl_ana_inv]
-    Cl_fid_sqrt = [sqrtm(ml) for ml in Cl_fid]
+    Cl_ana_nsqrt = sqrtm_km(Cl_ana_inv)
+    Cl_fid_sqrt = sqrtm_km(Cl_fid)
     print_debug ('---- Elapsed time for sqrt of matrices: ', time.time() - st)
+
+    ## single large matrix and disintegrate (40 s: takes long for sqrtm(large matrix))
+    #st = time.time()
+    #Cl_ana_inv_large = np.array([[[[0]*3]*3]*len(Cl_ana_inv)]*len(Cl_ana_inv))
+    #Cl_fid_large = np.array([[[[0]*3]*3]*len(Cl_fid)]*len(Cl_fid))
+    #for i in range(len(Cl_ana_inv)):
+    #    Cl_ana_inv_large[i,i] = Cl_ana_inv[i]
+    #    Cl_fid_large[i,i] = Cl_fid[i]
+    #Cl_ana_inv_large = np.concatenate(np.concatenate(Cl_ana_inv_large, 1), 1)
+    #Cl_fid_large = np.concatenate(np.concatenate(Cl_fid_large, 1), 1)
+
+    #st_p = time.time()
+    #Cl_ana_inv_nsqrt_large = sqrtm(Cl_ana_inv_large)
+    #Cl_fid_sqrt_large = sqrtm(Cl_fid_large)
+    #print_debug ('---- Elapsed time for sqrt of large matrices: ', time.time() - st_p)
+
+    #Cl_ana_nsqrt = [sqrtm(ml) for ml in Cl_ana_inv]
+    #Cl_fid_sqrt = [sqrtm(ml) for ml in Cl_fid]
+    #print_debug ('---- Elapsed time for sqrt of matrices: ', time.time() - st)
+
+    ## with multithreading (0.3 s: ~ 20 % improvement)
+    #from multiprocessing import Pool
+    #st = time.time()
+    #with Pool(processes=32) as pool:
+    #    Cl_ana_nsqrt = pool.map(sqrtm_, Cl_ana_inv)
+    #    Cl_fid_sqrt = pool.map(sqrtm_, Cl_fid)
+    #print_debug ('---- Elapsed time for sqrt of matrices: ', time.time() - st)
 
     st = time.time()
     CCC = np.matmul(Cl_ana_nsqrt, np.matmul(Cl_est, Cl_ana_nsqrt))
@@ -347,9 +400,12 @@ def n2logL_new_multi(cl_ana, cl_est, cl_fid):
     st = time.time()
     M = covMat_full(cl_fid, diagonal=True)
     print_debug ('elapsed time for covariance matrix calculation: ', time.time()-st)
+
     st = time.time()
+    #Mi = np.linalg.inv(M)
     Mi = np.linalg.pinv(M)
     print_debug ('elapsed time for covariance matrix inversion: ', time.time()-st)
+
     st = time.time()
     Xg = getVector_Xg(cl_ana, cl_est, cl_fid)
     print_debug ('elapsed time for Xg vector calculation: ', time.time()-st)
