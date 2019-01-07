@@ -131,6 +131,7 @@ def test_new_multi_fit_logAs(mapTQU=None, lmax=100, scale=1e12):
 
         print_msg ('log As = {}, n2logL = {} '.format(logAs, res))
         print_debug ('total elapsed time = ', time.time() - st_tot)
+
         return res
          
     limit = (2.9, 3.1)
@@ -141,7 +142,7 @@ def test_new_multi_fit_logAs(mapTQU=None, lmax=100, scale=1e12):
     plt.savefig('profile_multi_logAs_lmax{}_faster.png'.format(lmax))
 
 if __name__=='__main__':
-    lmax = 2000
+    lmax = 100
     As_in = 2e-9
     logAs_in = np.log(As_in * 1e10)
     
@@ -156,4 +157,7 @@ if __name__=='__main__':
     #test_new_single_logAs(mapT=mapT, lmax=lmax, scale=scale)
     #test_new_multi_fit_As(mapTQU=mapTQU, lmax=lmax, scale=scale)
     test_new_multi_fit_logAs(mapTQU=mapTQU, lmax=lmax, scale=scale)
+
+
+
 
