@@ -336,8 +336,117 @@ def test_n2logLf_EB_nonfid(As_in=2.092e-9, tau_in=0.0522, r_in=0.01, lmax=11,
     '''
 
 
+def test_n2logLf_new(As_in=2.092e-9, tau_in=0.0522, r_in=0.01, lmax=11,
+                    fix_As=False, fix_tau=False, fix_r=False, spec=False,
+                    migradonly=True):
+    K2uK = 1e12
+    clscale = K2uK * 1.0
+    # fiducial model
+    cls_fid = get_spectrum_camb(lmax, tau=0.05, As=2e-9, r=0.05, isDl=False) * clscale
+
+    # synthesize a random map
+    print_debug(As_in, tau_in, r_in)
+    cls_syn = get_spectrum_camb(lmax, tau=tau_in, As=As_in, r=r_in, isDl=False) * clscale 
+    map_syn = hp.synfast(cls_syn, nside=nside, new=True)
+    cls_est = hp.anafast(map_syn, lmax=lmax)
+
+    # analytic 
+    cls_ana = get_spectrum_camb(lmax, isDl=False) * clscale
+
+    n2logLf = lh.n2logL_new_multi(cls_ana, cls_est, cls_fid)
+
+    print ('Likelihood for scale %e = %e' % (clscale, n2logLf))
+
+    def fit_minuit_1(tau, As, r):
+        cls_ana = get_spectrum_camb(lmax=lmax, tau=tau, As=As, r=r, isDl=False) * clscale
+        #inv_Cls_ana, det_Cls_ana = lh.invdet_fid(cls_ana, T=False)
+        #Cls_ana = lh.cls2Cls(cls_ana, T=False)
+        lk = lh.n2logL_new_multi(cls_ana, cls_est, cls_fid)
+        print ('tau = %e, As = %e, r = %e, lk = %e' % (tau, As, r, lk)) 
+        return lk
+
+    tau0 = tau_in * 0.99 
+    tau_sig = 2e-3
+    tau_limit = tau0 + 5*np.array((-tau_sig, tau_sig))
+
+    As0 = As_in * 0.99
+    As_sig = 1e-10
+    As_limit = As0 + 5*np.array((-As_sig, As_sig))
+
+    r0 = r_in * 0.99
+    r_sig = 1.5e-3
+    r_limit = r0 + 5*np.array((-r_sig, r_sig))
+
+    if fix_tau:
+        tau0 = tau_in
+
+    if fix_As:
+        As0 = As_in
+
+    if fix_r:
+        r0 = r_in
+        
+
+    # fit fnc check
+    print (fit_minuit_1(tau0, As0, r0))
+
+    m = Minuit(fit_minuit_1, tau=tau0, As=As0, r=r0, 
+               limit_tau=tau_limit, limit_As=As_limit, limit_r=r_limit,
+               fix_tau=fix_tau, fix_As=fix_As, fix_r=fix_r)
+
+    if migradonly:
+        st = time.time()
+        res = m.migrad()
+        print ('Elapsed time for migrad: %fs' % (time.time()-st))
+        if (spec == True):
+            return res, cls_est/clscale
+        else:
+            return res
+    else:
+        st = time.time()
+        res = m.migrad()
+        print ('Elapsed time for migrad: %fs' % (time.time()-st))
+
+        st = time.time()
+        res_h = m.hesse()
+        print ('Elapsed time for hesse: %fs' % (time.time()-st))
+
+        st = time.time()
+        res_m = m.minos()
+        print ('Elapsed time for minos: %fs' % (time.time()-st))
+
+        if (spec == True):
+            return res, res_h, res_m, cls_est/clscale
+        else:
+            return res, res_h, res_m
+
+
+    ''' 
+    plt.figure()
+    m.draw_profile('tau')
+    plt.figure()
+    m.draw_profile('As')
+    plt.figure()
+    m.draw_profile('r')
+
+    tau_min = m.values['tau']
+    tau_err = m.errors['tau']
+    cls_min = get_spectrum_camb(lmax=lmax, tau=tau_min, isDl=False) * clscale
+    cls_upp = get_spectrum_camb(lmax=lmax, tau=tau_min + tau_err, isDl=False) * clscale
+    cls_low = get_spectrum_camb(lmax=lmax, tau=tau_min - tau_err, isDl=False) * clscale
+
+    ell = np.arange(len(cls_est[0]))
+    plt.figure()
+    plt.loglog(ell, cl2dl(cls_est[:3].T), '*')
+    plt.loglog(ell, cl2dl(cls_syn[:3].T), '--', linewidth=1.0)
+    plt.loglog(ell, cl2dl(cls_min[:3].T), '-', linewidth=2.0)
+    plt.loglog(ell, cl2dl(cls_upp[:3].T), '--', linewidth=0.5)
+    plt.loglog(ell, cl2dl(cls_low[:3].T), '--', linewidth=0.5)
+    '''
+
+
 ## Ensemble test
-def test_ensemble(pname='As', par_in=2.09e-9, ntest=1, dir='.', specplt=False, nonfid=False):
+def test_ensemble(pname='As', par_in=2.09e-9, ntest=1, dir='.', specplt=False, nonfid=False, migradonly=True):
     f=open(dir + '/' + pname + ('_%2.3e.dat' % par_in), 'w')
     f.write("#\t" + pname + "_val\tmigrad_err\thesse_err\tminos_lower\tminos_upper\n")
 
@@ -366,28 +475,42 @@ def test_ensemble(pname='As', par_in=2.09e-9, ntest=1, dir='.', specplt=False, n
                 print_error("Invaild parameter name")
                 return
 
-            callfnc = test_n2logLf_EB
+            callfnc = test_n2logLf_new
             if nonfid:
                 callfnc = test_n2logLf_EB_nonfid
 
+
             if (specplt == True):
-                res, res_h, res_m, cls_est = callfnc(As_in=As, tau_in=tau, r_in=r,
-                                                     fix_As=fix_As, fix_tau=fix_tau, fix_r=fix_r, 
-                                                     spec=True)
+                *fitres, cls_est = callfnc(As_in=As, tau_in=tau, r_in=r,
+                                           fix_As=fix_As, fix_tau=fix_tau, fix_r=fix_r, 
+                                           spec=True, migradonly=migradonly)
                 cls_arr.append(cls_est)
             else:
-                res, res_h, res_m = callfnc(As_in=As, tau_in=tau, r_in=r,
-                                            fix_As=fix_As, fix_tau=fix_tau, fix_r=fix_r)
+                fitres = callfnc(As_in=As, tau_in=tau, r_in=r,
+                                 fix_As=fix_As, fix_tau=fix_tau, fix_r=fix_r, 
+                                 migradonly=migradonly)
+            
+            if migradonly:
+                res = fitres
+                val = res[1][pn]['value']
+                err = res[1][pn]['error']
+                f.write("%d\t%e\t%e\n" % 
+                        (i, val, err))
+                f.flush()
+            else:
+                res = fitres[0]
+                res_h = fitres[1]
+                res_m = fitres[2]
 
-            val = res[1][pn]['value']
-            err = res[1][pn]['error']
-            errh = res_h[pn]['error']
-            errl = res_m[pname]['lower']
-            erru = res_m[pname]['upper']
+                val = res[1][pn]['value']
+                err = res[1][pn]['error']
+                errh = res_h[pn]['error']
+                errl = res_m[pname]['lower']
+                erru = res_m[pname]['upper']
 
-            f.write("%d\t%e\t%e\t%e\t%e\t%e\n" % 
-                    (i, val, err, errh, errl, erru))
-            f.flush()
+                f.write("%d\t%e\t%e\t%e\t%e\t%e\n" % 
+                        (i, val, err, errh, errl, erru))
+                f.flush()
 
         except:
             e = sys.exc_info()[0]

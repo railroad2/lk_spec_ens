@@ -396,23 +396,29 @@ def getVector_Xg(cl_ana, cl_est, cl_fid):
 
     return Xg
 
-def n2logL_new_multi(cl_ana, cl_est, cl_fid):
-    st = time.time()
-    M = covMat_full(cl_fid, diagonal=True)
-    print_debug ('elapsed time for covariance matrix calculation: ', time.time()-st)
+def n2logL_new_multi(cl_ana, cl_est, cl_fid, covm=None, covmi=None):
+    #st = time.time()
+    if covm is None:
+        M = covMat_full(cl_fid, diagonal=True)
+    else:
+        M = covm
+    #print_debug ('elapsed time for covariance matrix calculation: ', time.time()-st)
 
-    st = time.time()
+    #st = time.time()
     #Mi = np.linalg.inv(M)
-    Mi = np.linalg.pinv(M)
-    print_debug ('elapsed time for covariance matrix inversion: ', time.time()-st)
+    if covmi is None:
+        Mi = np.linalg.pinv(M)
+    else:
+        Mi = covmi
+    #print_debug ('elapsed time for covariance matrix inversion: ', time.time()-st)
 
-    st = time.time()
+    #st = time.time()
     Xg = getVector_Xg(cl_ana, cl_est, cl_fid)
-    print_debug ('elapsed time for Xg vector calculation: ', time.time()-st)
+    #print_debug ('elapsed time for Xg vector calculation: ', time.time()-st)
 
-    st = time.time()
+    #st = time.time()
     L = sum(np.einsum('ij,ij->i', Xg, np.einsum('ijk,ij->ik', Mi, Xg)))
-    print_debug ('elapsed time for Likelihood calculation: ', time.time()-st)
+    #print_debug ('elapsed time for Likelihood calculation: ', time.time()-st)
 
     return L
 

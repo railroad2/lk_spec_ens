@@ -1,13 +1,5 @@
 #!/bin/bash
 
-#PBS -o $HOME/lk_spec_ens/1_likerr/log
-#PBS -e $HOME/lk_spec_ens/1_likerr/log
-
-if [ -n "$PBS_O_WORKDIR" ]; then
-    cd $PBS_O_WORKDIR
-fi
-
-echo $PBS_O_WORKDIR
 
 export PYTHON3=/home/kmlee/git-inst/bin/python3
 
@@ -15,10 +7,18 @@ export PYTHON3=/home/kmlee/git-inst/bin/python3
 vals=`seq -s ', ' 1e-9 0.2e-9 4e-9`
 pars="[$vals]"
 ntest=1000
-lmax=11
+lmax=100
 specplt="False"
-nonfid="True"
-dir="./1_likerr/"
+nonfid="False"
+dir="./3_newapprox/"
+
+#PBS -o $HOME/lk_spec_ens/$dir/log
+#PBS -e $HOME/lk_spec_ens/$dir/log
+echo $PBS_O_WORKDIR
+
+if [ -n "$PBS_O_WORKDIR" ]; then
+    cd $PBS_O_WORKDIR
+fi
 
 exe="import src.test_ensemble as te; te.ens_As(pars=$pars, ntest=$ntest, lmax_in=$lmax, specplt=$specplt, nonfid=$nonfid, dir='$dir')"
 echo $exe
