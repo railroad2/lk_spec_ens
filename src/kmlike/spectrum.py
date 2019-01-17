@@ -1,7 +1,7 @@
 import numpy as np
 import healpy as hp
 import camb
-from .utils import dl2cl
+from .utils import dl2cl, print_warning
 
 
 args_cosmology = ['H0', 'cosmomc_theta', 'ombh2', 'omch2', 'omk', 
@@ -12,7 +12,9 @@ args_cosmology = ['H0', 'cosmomc_theta', 'ombh2', 'omch2', 'omk',
 args_InitPower = ['As', 'ns', 'nrun', 'nrunrun', 'r', 'nt', 'ntrun', 'pivot_scalar', 
                   'pivot_tensor', 'parameterization']
 
-def get_spectrum_camb(lmax, isDl=True, cambres=False, TTonly=False, **kwargs):
+def get_spectrum_camb(lmax, 
+                      isDl=True, cambres=False, TTonly=False, unlensed=False, CMB_unit=None, 
+                      **kwargs):
     """
     """
    
@@ -20,6 +22,7 @@ def get_spectrum_camb(lmax, isDl=True, cambres=False, TTonly=False, **kwargs):
     kwargs_cosmology={}
     kwargs_InitPower={}
     wantTensor = False
+
     for key, value in kwargs.items():  # for Python 3, items() instead of iteritems()
         if key in args_cosmology: 
             kwargs_cosmology[key]=value
@@ -36,12 +39,19 @@ def get_spectrum_camb(lmax, isDl=True, cambres=False, TTonly=False, **kwargs):
     pars.InitPower.set_params(**kwargs_InitPower)
     pars.WantTensors = True
     results = camb.get_results(pars)
-    if (TTonly):
-        dls = results.get_total_cls(lmax=lmax).T[0]
-    else: 
-        dls = results.get_total_cls(lmax=lmax).T
 
-    dls = dls * pars.TCMB**2
+    if (TTonly):
+        if unlensed:
+            dls = results.get_unlensed_total_cls(lmax=lmax, CMB_unit=CMB_unit).T[0]
+        else:
+            dls = results.get_total_cls(lmax=lmax, CMB_unit=CMB_unit).T[0]
+    else: 
+        if unlensed:
+            dls = results.get_unlensed_total_cls(lmax=lmax, CMB_unit=CMB_unit).T
+        else:
+            dls = results.get_total_cls(lmax=lmax, CMB_unit=CMB_unit).T
+
+    #dls = dls * pars.TCMB**2
 
     if (isDl):
         res = dls

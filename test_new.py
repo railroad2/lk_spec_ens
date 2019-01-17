@@ -150,14 +150,15 @@ if __name__=='__main__':
     scale = 1e12
 
     cl_fid = get_spectrum_camb(lmax, isDl=False, TTonly=False, As=As_in) * scale
+    np.random.seed(42)
     mapTQU = hp.synfast(cl_fid, nside=1024, new=True)
     mapT = mapTQU[0]
 
     #test_new_single_As(mapT=mapT, lmax=lmax, scale=scale)
     #test_new_single_logAs(mapT=mapT, lmax=lmax, scale=scale)
-    #test_new_multi_fit_As(mapTQU=mapTQU, lmax=lmax, scale=scale)
-    test_new_multi_fit_logAs(mapTQU=mapTQU, lmax=lmax, scale=scale)
+    test_new_multi_fit_As(mapTQU=mapTQU, lmax=lmax, scale=scale)
+    #test_new_multi_fit_logAs(mapTQU=mapTQU, lmax=lmax, scale=scale)
 
-
-
+    #cl_est = hp.anafast(mapTQU, lmax=lmax)
+    #cl_fit = get_spectrum_camb(lmax, isDl
 

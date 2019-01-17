@@ -115,7 +115,7 @@ def test_n2logLf_EB(As_in=2.092e-9, tau_in=0.0522, r_in=0.01, lmax=11,
     # fiducial model
     tau_fid = 0.05
     As_fid = 2e-9
-    r_fid = 0.1
+    r_fid = 0.01
     cls_fid = get_spectrum_camb(lmax, tau=tau_fid, As=As_fid, r=r_fid, isDl=False) * clscale
 
     # synthesize a random map
