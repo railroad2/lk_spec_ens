@@ -247,17 +247,19 @@ def n2logL_new_single(cl_ana, cl_est, cl_fid):
     return n2lnL1
      
 
-def covMat_full(cl_fid, diagonal=True, simple=True):
-    if len(cl_fid) == 4 or len(cl_fid) == 6:
-        cl = cl_fid.T 
+def covMat_full(cl_fid, diagonal=True, simple=True, spectra=['TT','EE','BB','TE']):
+    if (len(cl_fid) == 4 or len(cl_fid) == 6):
+        cl = []
+
+        if 'TT' in spectra: cl.append(cl_fid[0])
+        if 'EE' in spectra: cl.append(cl_fid[1])
+        if 'BB' in spectra: cl.append(cl_fid[2])
+        if 'TE' in spectra: cl.append(cl_fid[3])
+
+        cl = np.array(cl).T
+        Ncl = len(spectra)
     else:
         cl = cl_fid
-
-    if len(cl[0]) == 4:
-        Ncl = 4
-    elif len(cl[0]) == 6:
-        Ncl = 6
-    else:
         Ncl = 1
 
     ndim = (len(cl)-2)
@@ -285,7 +287,12 @@ def g_(X):
 
 
 def vecp(Cls):
-    return np.array([[Cl[0][0], Cl[1][1], Cl[2][2], Cl[0][1]] for Cl in Cls])
+    if (Cls[0].shape == (3,3)):
+        return np.array([[Cl[0][0], Cl[1][1], Cl[2][2], Cl[0][1]] for Cl in Cls])
+    elif (Cls[0].shape == (2,2)):
+        return np.array([[Cl[0][0], Cl[1][1]] for Cl in Cls])
+    else:
+        return 0
 
 """
 def getVector_Xg(cl_ana, cl_est, cl_fid):
@@ -308,15 +315,15 @@ def getVector_Xg(cl_ana, cl_est, cl_fid):
     return Xg
 """
 
-def sqrtm_km(X):
-    D, V = np.linalg.eig(X)
+def sqrtm_km(M):
+    D, V = np.linalg.eig(M)
     D_sqrt_arr = np.sqrt(D)
-    if (len(X.shape) == 3):
+    if (len(M.shape) == 3):
         D_sqrt = np.array([np.diag(mi) for mi in D_sqrt_arr])
-    elif (len(X.shape) == 2):
+    elif (len(M.shape) == 2):
         D_sqrt = np.diag(np.sqrt(D))
     else:
-        print_error('Matrix with invaild dimension.')
+        print_error('Matrix has an invaild dimension.')
         
     Vi = np.linalg.inv(V)
 
@@ -328,11 +335,13 @@ def sqrtm_km(X):
 def sqrtm_(x):
     return sqrtm(x)
 
-def getVector_Xg(cl_ana, cl_est, cl_fid):
+
+def getVector_Xg(cl_ana, cl_est, cl_fid, spectra=['TT','EE','BB','TE']):
     st = time.time()
-    Cl_ana = cls2Cls(cl_ana)[2:]
-    Cl_est = cls2Cls(cl_est)[2:]
-    Cl_fid = cls2Cls(cl_fid)[2:]
+    Cl_ana = cls2Cls(cl_ana, spectra=spectra)[2:]
+    Cl_est = cls2Cls(cl_est, spectra=spectra)[2:]
+    Cl_fid = cls2Cls(cl_fid, spectra=spectra)[2:]
+
     print_debug ('---- Elapsed time for cls2Cls: ', time.time() - st)
 
     st = time.time()
@@ -378,77 +387,75 @@ def getVector_Xg(cl_ana, cl_est, cl_fid):
     #    Cl_fid_sqrt = pool.map(sqrtm_, Cl_fid)
     #print_debug ('---- Elapsed time for sqrt of matrices: ', time.time() - st)
 
-    st = time.time()
+    #st = time.time()
     CCC = np.matmul(Cl_ana_nsqrt, np.matmul(Cl_est, Cl_ana_nsqrt))
-    print_debug ('---- Elapsed time for CCC: ', time.time() - st)
+    #print_debug ('---- Elapsed time for CCC: ', time.time() - st)
 
-    st = time.time()
+    #st = time.time()
     gCCC = g_(CCC)
-    print_debug ('---- Elapsed time for gCCC: ', time.time() - st)
+    #print_debug ('---- Elapsed time for gCCC: ', time.time() - st)
 
-    st = time.time()
+    #st = time.time()
     CgCCCC = np.matmul(Cl_fid_sqrt, np.matmul(gCCC, Cl_fid_sqrt))
-    print_debug ('---- Elapsed time for CgCCCC: ', time.time() - st)
+    #print_debug ('---- Elapsed time for CgCCCC: ', time.time() - st)
 
-    st = time.time()
+    #st = time.time()
     Xg = vecp(CgCCCC)
-    print_debug ('---- Elapsed time for Xg: ', time.time() - st)
+    #print_debug ('---- Elapsed time for Xg: ', time.time() - st)
 
     return Xg
 
-def n2logL_new_multi(cl_ana, cl_est, cl_fid, covm=None, covmi=None):
-    #st = time.time()
+
+def n2logL_new_multi(cl_ana, cl_est, cl_fid, covm=None, covmi=None, spectra=['TT','EE','BB','TE']):
     if covm is None:
-        M = covMat_full(cl_fid, diagonal=True)
+        M = covMat_full(cl_fid, diagonal=True, spectra=spectra)
     else:
         M = covm
-    #print_debug ('elapsed time for covariance matrix calculation: ', time.time()-st)
 
-    #st = time.time()
-    #Mi = np.linalg.inv(M)
     if covmi is None:
+        #Mi = np.linalg.inv(M)
         Mi = np.linalg.pinv(M)
     else:
         Mi = covmi
-    #print_debug ('elapsed time for covariance matrix inversion: ', time.time()-st)
 
-    #st = time.time()
-    Xg = getVector_Xg(cl_ana, cl_est, cl_fid)
-    #print_debug ('elapsed time for Xg vector calculation: ', time.time()-st)
+    Xg = getVector_Xg(cl_ana, cl_est, cl_fid, spectra=spectra)
 
-    #st = time.time()
     L = sum(np.einsum('ij,ij->i', Xg, np.einsum('ijk,ij->ik', Mi, Xg)))
-    #print_debug ('elapsed time for Likelihood calculation: ', time.time()-st)
 
     return L
 
 
 ## convert cls to Cls
 
-def cls2Cls(cls, T=True):
+def cls2Cls(cls, spectra=['TT','EE','BB','TE']):
     cls = np.array(cls)
     if len(cls.shape) != 2:
         print_error ('The input should be 2-D array')
         return
     else:
-        if (len(cls) == 4 or len(cls) == 6):
+        if (len(cls) in [4,6]):
             cls_tmp = cls.T[:,:4]
         else:
             cls_tmp = cls[:,:4]
 
-
-    if T:
+    if set(spectra) == set(['TT','EE','BB','TE']):
         Cls = [ [[TT, TE, 0], [TE, EE, 0], [0, 0, BB]] for TT, EE, BB, TE in cls_tmp ]
-    else:
+    elif set(spectra) == set(['EE','BB']):
         Cls = [ [[EE, 0], [0, BB]] for __, EE, BB, __ in cls_tmp ]
+    elif set(spectra) == set(['TT','TE','EE']):
+        Cls = [ [[TT, TE], [TE, EE]] for TT, EE, __, TE in cls_tmp ]
+    elif set(spectra) == set(['TT','EE']):
+        Cls = [ [[TT, 0], [0, EE]] for TT, EE, __, __ in cls_tmp ]
+    else:
+        pass
 
     Cls = np.array(Cls)
 
     return Cls
 
 
-def invdet_fid(cls_fid, T=True):
-    Cls_fid = cls2Cls(cls_fid, T) 
+def invdet_fid(cls_fid, spectra=['TT','EE','BB','TE']):
+    Cls_fid = cls2Cls(cls_fid, spectra=spectra) 
     inv_Cls_fid = np.zeros(Cls_fid.shape)
     inv_Cls_fid[2:] = np.linalg.inv(Cls_fid[2:])
     det_Cls_fid = np.full(len(Cls_fid), 1.0)
